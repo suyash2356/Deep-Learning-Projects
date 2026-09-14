@@ -1,120 +1,137 @@
-# 🧠 Deep Learning Projects Repository
+# Deep Learning — Learning Journey & Projects
 
-Welcome to my Deep Learning repository!  
-This repo contains a collection of projects, experiments, and implementations that I built while learning Deep Learning concepts from scratch.
+This repository is a working record of my Deep Learning progress — practice code, experiments, and projects, organized by architecture, in the order I learned them.
 
----
+Instead of notes, I document my learning through **code**: what I studied, how I practiced it, and what I built to prove I understood it.
 
-## 🚀 About This Repository
-
-This repository represents my journey of learning Deep Learning by **building models and understanding concepts deeply** rather than just using libraries.
-
-I focused on:
-- Understanding how neural networks work internally  
-- Building intuition behind mathematical concepts  
-- Practicing on real-world and structured datasets  
-- Learning through experimentation and iteration  
+```
+Learn → Understand → Implement → Experiment → Build
+```
 
 ---
 
-## 📚 What is Deep Learning?
+## Learning Path
 
-Deep Learning is a subset of Machine Learning that uses **Artificial Neural Networks** to learn patterns from data.
+```text
+Deep Learning
+│
+├── Artificial Neural Networks (ANN)          ✅ Done
+├── Convolutional Neural Networks (CNN)        ✅ Done
+├── Recurrent Neural Networks (RNN)            🔄 In Progress
+└── LSTM / GRU / Attention / Transformers      🔜 Next
+```
 
-It is widely used in:
-- Image Recognition  
-- Natural Language Processing  
-- Speech Recognition  
-- Pattern Detection  
-
-Core components of Deep Learning:
-- Neurons and Layers (Input, Hidden, Output)  
-- Weights and Biases  
-- Activation Functions  
-- Loss Functions  
-- Optimization using Gradient Descent  
+Each stage below lists the concepts covered and the project(s) that put them into practice.
 
 ---
 
-## 🧩 Projects in This Repository
+## Artificial Neural Networks (ANN)
 
-### 📌 Binary Classification using Sigmoid
-- Implemented binary classification using sigmoid activation  
-- Learned logistic regression intuition and decision boundaries  
+**Concepts covered:** neurons, layers, weights & biases, forward propagation, activation functions (Sigmoid, ReLU, Tanh), loss functions, gradient descent, backpropagation, epochs/batches, learning rate, overfitting/underfitting, binary and multi-class classification, model evaluation.
 
----
+**Projects:**
+- **Binary Classification** — sigmoid activation, probability-based predictions, decision boundaries.
+- **Handwritten Digit Recognition** — multi-class classification on image data.
+- **Activation Function Experiments** — comparative study of Sigmoid, ReLU, and Tanh, and their effect on training.
 
-### 🔢 Digit Recognition (Deep Learning)
-- Built a model for handwritten digit classification  
-- Learned multi-class classification and neural network basics  
-
----
-
-### 🧬 Skin Cancer Detection
-- Applied deep learning on image-based medical dataset  
-- Learned preprocessing, model training, and generalization  
+**What this demonstrates:** I can build a feedforward network from the ground up, explain what each layer is doing to the data, and reason about why a given activation or loss function was chosen rather than just calling an API.
 
 ---
 
-### ⚙️ Activation Functions Exploration
-- Explored Sigmoid, ReLU, and Tanh  
-- Understood non-linearity and vanishing gradient problem  
+## Convolutional Neural Networks (CNN)
+
+**Concepts covered:** images as numerical data, image preprocessing, convolution, kernels/filters, feature maps, padding, stride, pooling, CNN architecture, flattening, fully connected layers, image classification, overfitting in image models.
+
+**Projects:**
+- **Skin Cancer Detection** — image classification on a medical imaging dataset, covering preprocessing, CNN architecture design, training, validation, and evaluation of generalization.
+- **Facial Recognition & verification** — Detect and recognize face from image, video and live video, using YOLO and transfer learning.
+- **Object detection & segmentation** - Detect object in an image and crop it, enhanced it. Along with image segmentation. 
+
+**What this demonstrates:** I can take raw image data through a full pipeline — preprocessing, a CNN built and trained from scratch, and an honest evaluation of how well it generalizes rather than just how well it fits training data.
 
 ---
 
-### 📊 Model Evaluation & Selection
-- Compared models using performance metrics  
-- Learned accuracy, precision, recall, F1-score  
-- Studied overfitting vs underfitting  
+## Recurrent Neural Networks (RNN) — In Progress
+
+**Concepts covered:** sequential data, RNN architecture, hidden states, recurrent connections, sequence length, text preprocessing, tokenization, vocabulary, word indices, sequence padding, word embeddings, `Embedding` layers, `SimpleRNN`, binary text classification.
+
+**Current project:**
+- **Text Classification (IMDB dataset)** — sentiment classification pipeline:
+
+```text
+Text → Tokenized sequences → Padding → Embedding → SimpleRNN → Dense + Sigmoid → Positive / Negative
+```
+
+**What this demonstrates:** I can move from spatial data (images) to sequential data (text), and apply the same core deep-learning workflow — preprocessing, model design, training, evaluation — to a different data type and problem class.
 
 ---
 
-## 🛠️ Tools & Technologies Used
+## Tools & Technologies
 
-- Python  
-- NumPy  
-- Pandas  
-- Matplotlib  
-- Scikit-learn  
-- Jupyter Notebook  
-
----
-
-## 🎯 Key Concepts I Learned
-
-- Neural Networks fundamentals  
-- Forward Propagation  
-- Backpropagation  
-- Gradient Descent  
-- Loss Functions  
-- Activation Functions  
-- Model Evaluation Techniques  
-- Bias-Variance Tradeoff  
+| Category | Tools |
+|---|---|
+| Language | Python |
+| Data & Numerical Computing | NumPy, Pandas |
+| Visualization | Matplotlib |
+| Classical ML | Scikit-learn |
+| Deep Learning | TensorFlow, Keras, Pytorch |
+| Environment | Jupyter Notebook, VS Code |
 
 ---
 
-## 💡 What I Understood From These Projects
+## Model Evaluation
 
-- Models learn through optimization, not magic  
-- Hyperparameters significantly affect performance  
-- Data preprocessing is crucial  
-- Understanding concepts > blindly using libraries  
-- Practical implementation strengthens intuition  
+Across all projects, evaluation has consistently covered: accuracy, precision, recall, F1-score, and comparing training vs. validation performance to check for overfitting/underfitting rather than optimizing for training accuracy alone.
 
 ---
 
-## 🔥 Future Improvements
+## Repository Structure
 
-- Implement models from scratch  
-- Explore CNN, RNN, LSTM, Transformers  
-- Work on larger real-world datasets  
-- Deploy models as applications  
+```text
+Deep-Learning/
+│
+├── ANN/
+│   ├── Practice/
+│   └── Projects/
+│
+├── CNN/
+│   ├── Practice/
+│   └── Projects/
+│
+├── RNN/
+│   ├── Practice/
+│   └── Projects/
+│
+└── README.md
+```
 
 ---
 
-## 📌 How to Use This Repo
+## What's Next
+
+- LSTM
+- GRU
+- Bidirectional RNNs
+- Attention Mechanism
+- Transformers
+- Transfer Learning
+- Larger, real-world projects
+- Model deployment
+
+---
+
+## How to Use This Repository
 
 ```bash
 git clone https://github.com/your-username/your-repo-name.git
 cd your-repo-name
 jupyter notebook
+```
+
+Each folder is self-contained — open the notebook for the concept or project you're interested in and run it directly.
+
+---
+
+## Why This Repository Exists
+
+This is a public log of how I'm learning Deep Learning, not a claim that I know everything in the field. Each folder is evidence of a concept I've implemented myself, not just read about — the goal is that the code speaks for the understanding behind it.
