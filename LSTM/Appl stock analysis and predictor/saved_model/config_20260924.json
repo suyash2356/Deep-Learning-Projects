@@ -1,0 +1,26 @@
+{
+  "ticker": "AAPL",
+  "features": [
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume",
+    "Return",
+    "MA7",
+    "MA21",
+    "RSI",
+    "MACD",
+    "MACD_Signal",
+    "Volatility21",
+    "Momentum10"
+  ],
+  "window_size": 60,
+  "horizon_days": 10,
+  "threshold": 0.02,
+  "trained_on_rows": 2979,
+  "trained_date": "20260924",
+  "validated_accuracy_avg": 0.6249158249158249,
+  "validated_majority_baseline_avg": 0.630976430976431,
+  "folds_beat_baseline": "1/5"
+}
