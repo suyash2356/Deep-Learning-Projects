@@ -1,9 +1,3 @@
-Absolutely. For this project, **one strong README is much better** than putting README files inside empty `data/` and `artifacts/` folders.
-
-Since you're putting the project on GitHub as a portfolio/resume project, the README should explain the **problem, architecture, NLP concepts, implementation, experiments, metrics, features, limitations, and setup**.
-
-Below is a complete `README.md` you can copy directly.
-
 ```markdown
 # 🧠 Semantic News Intelligence Engine
 
