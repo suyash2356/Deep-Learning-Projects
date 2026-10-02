@@ -1094,5 +1094,3 @@ artifacts/*.pkl
 out of GitHub.
 
 **However, there's one important issue:** with only `app.py` + notebooks on GitHub, someone cloning the repository **cannot launch the Streamlit app immediately**, because `app.py` currently expects the GloVe matrix, vocabulary, embeddings, classifier, and dataset to exist locally.
-
-For a genuinely polished portfolio project, the next step would be to make the README's **"Data & Model Artifacts"** section point to downloadable artifacts (for example, Hugging Face) and modify `app.py` to obtain them automatically. That would turn this from "code on GitHub" into a **reproducible/deployable project**.
