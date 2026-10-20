@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+ html,body{margin:0;background:#0b0f1a;color:#cfd6e6;font-family:"Segoe UI","Nirmala UI","Noto Sans Devanagari",sans-serif}
+ #wrap{max-width:1250px;margin:auto}
+ canvas{width:100%;height:auto;display:block;background:#0b0f1a;border-radius:10px;cursor:pointer}
+ #bar{display:flex;gap:10px;align-items:center;padding:8px 4px;flex-wrap:wrap;font-size:14px}
+ button,select{background:#1b2338;color:#cfd6e6;border:1px solid #33405f;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:14px}
+ input[type=range]{accent-color:#ffd34d}
+ #seek{flex:1;min-width:180px}
+</style></head><body><div id="wrap">
+<div id="bar">
+ <button id="play">⏸ Pause</button>
+ <button id="prev">⏮ Back</button>
+ <button id="next">⏭ Next</button>
+ <input id="seek" type="range" min="0" max="1000" value="0">
+ <label>Speed <input id="speed" type="range" min="0.25" max="3" step="0.05" value="1" style="width:90px"></label>
+ <label>Attention <select id="head"><option value="8">average of heads</option>
+  <option value="0">head 1</option><option value="1">head 2</option><option value="2">head 3</option><option value="3">head 4</option>
+  <option value="4">head 5</option><option value="5">head 6</option><option value="6">head 7</option><option value="7">head 8</option></select></label>
+ <label><input id="lbl" type="checkbox" checked> labels</label>
+ <button id="jump">Go to decoder ⏩</button>
+</div>
+<canvas id="cv"></canvas>
+</div>
+<script>
+const DATA = __DATA__;
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const W = 1200, H = 760;
+const FONT = '"Segoe UI","Nirmala UI","Noto Sans Devanagari","Mangal",sans-serif';
+(function(){ const r = window.devicePixelRatio || 1; cv.width = W*r; cv.height = H*r; ctx.setTransform(r,0,0,r,0,0); })();
+
+const S = DATA.src.length, N = DATA.N, DEC = DATA.dec, T = DEC.tgt_in.length;
+let headSel = 8, showLabels = true, focus = null;
+
+function normMat(m){ let mx = 1e-9; for (const r of m) for (const v of r) mx = Math.max(mx, Math.abs(v)); return m.map(r => r.map(v => v/mx)); }
+const E = DATA.enc.bands.map(b => Object.assign({}, b, { vec: b.vec ? normMat(b.vec) : null }));
+
+const rowsTpl = [{name:"Input word", kind:"chip"},
+  {name:"Embedding", vec:normMat(DEC.embed)}, {name:"+ Position", vec:normMat(DEC.pos)}];
+DEC.layers.forEach((L,l) => {
+  rowsTpl.push({name:"L"+(l+1)+" Masked self-attn", vec:normMat(L.self_vec), attn:L.self_attn, edge:"self"});
+  rowsTpl.push({name:"L"+(l+1)+" Cross-attn", vec:normMat(L.cross_vec), attn:L.cross_attn, edge:"cross"});
+  rowsTpl.push({name:"L"+(l+1)+" FFN neurons", vec:normMat(L.ffnh_vec)});
+  rowsTpl.push({name:"L"+(l+1)+" FFN out", vec:normMat(L.out_vec)});
+});
+rowsTpl.push({name:"Next-word scores", kind:"out"});
+const R = rowsTpl.length;
+
+/* ---------- drawing helpers ---------- */
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function chip(x,y,text,o){
+  o = o || {}; const font = o.font || 13, alpha = o.alpha === undefined ? 1 : o.alpha;
+  if (alpha < 0.02) return 0;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.font = font + "px " + FONT;
+  const w = Math.max(o.minW || 40, ctx.measureText(text).width + 16), h = font + 11;
+  rr(x-w/2, y-h/2, w, h, 7); ctx.fillStyle = o.fill || "#16203a"; ctx.fill();
+  ctx.strokeStyle = o.stroke || "#3a4a75"; ctx.lineWidth = o.lw || 1.2; ctx.stroke();
+  ctx.fillStyle = o.color || "#dfe6f5"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y+0.5); ctx.restore(); return w;
+}
+function node(x,y,r,v,alpha){
+  if (alpha < 0.02) return;
+  const a = Math.pow(Math.min(1, Math.abs(v)), 0.7), rgb = v >= 0 ? "255,205,70" : "70,170,255";
+  if (a > 0.3){ ctx.beginPath(); ctx.arc(x,y,r*(1+2.4*a),0,6.2832); ctx.fillStyle = "rgba("+rgb+","+(0.16*a*alpha).toFixed(3)+")"; ctx.fill(); }
+  ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.fillStyle = "rgba("+rgb+","+(alpha*(0.18+0.82*a)).toFixed(3)+")"; ctx.fill();
+}
+function ghost(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.strokeStyle = "rgba(120,140,185,0.16)"; ctx.lineWidth = 1; ctx.stroke(); }
+function line(x1,y1,x2,y2,col,al,lw){ if (al < 0.015) return; ctx.strokeStyle = "rgba("+col+","+Math.min(1,al).toFixed(3)+")"; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+function dense(pv, cv_, pp, cp, kf){
+  for (let m=0;m<cp.length;m++){
+    const vb = Math.pow(Math.abs(cv_[m]),0.7);
+    if (pv === null){ if (vb < 0.1) continue; line(pp[0].x,pp[0].y,cp[m].x,cp[m].y,"150,185,255",kf*(0.05+0.5*vb),0.6+vb); continue; }
+    for (let a=0;a<pp.length;a++){
+      const s = Math.pow(Math.abs(pv[a]),0.7)*vb; if (s < 0.12) continue;
+      line(pp[a].x,pp[a].y,cp[m].x,cp[m].y,"150,185,255",kf*(0.04+0.65*s),0.5+1.3*s);
+    }
+  }
+}
+function label(text,x,y,hot,align){ if (!showLabels) return; ctx.fillStyle = hot ? "#ffd34d" : "#66749a"; ctx.font = "12px "+FONT; ctx.textAlign = align || "left"; ctx.textBaseline = "middle"; ctx.fillText(text,x,y); }
+
+/* ---------- encoder scene ---------- */
+const ex0 = 150, exw = W - 150 - 30, espace = Math.min(95, exw/S);
+const exs = j => ex0 + (exw - espace*S)/2 + (j+0.5)*espace;
+const nodeSp = Math.min(11, espace*0.8/N), nodeR = Math.max(2, nodeSp*0.42);
+const ey = b => 52 + b*43;
+function strip(cx,y,sp){ const a = []; for (let k=0;k<N;k++) a.push({x: cx + (k-(N-1)/2)*sp, y: y}); return a; }
+
+function drawEnc(stage,p){
+  for (let b=0;b<E.length;b++){
+    const band = E[b], vis = b<stage ? 1 : (b===stage ? p : 0), cur = (b===stage), y = ey(b);
+    label(band.name, 12, y, cur);
+    if (b === 0){
+      for (let j=0;j<S;j++){
+        const dim = (focus===null || focus===j) ? 1 : 0.3;
+        chip(exs(j), y-(1-vis)*14, DATA.src[j], {alpha: vis*dim, minW: 30, stroke: focus===j ? "#ffd34d" : "#3a4a75"});
+      }
+      continue;
+    }
+    if (vis <= 0){ for (let j=0;j<S;j++) for (const q of strip(exs(j),y,nodeSp)) ghost(q.x,q.y,nodeR); continue; }
+    const kf = cur ? 1 : 0.35;
+    if (band.kind === "attn"){
+      const A = band.attn[headSel];
+      for (let q=0;q<S;q++){
+        const hi = (focus===null || focus===q);
+        for (let k=0;k<S;k++){
+          const w = A[q][k]; if (w < 0.03) continue;
+          line(exs(k), ey(b-1)+7, exs(q), y-7, "255,214,102", vis*kf*(hi ? Math.min(1,0.1+1.4*w) : 0.04), hi ? 0.4+4.2*w : 0.5);
+        }
+      }
+    } else {
+      const prev = E[b-1];
+      for (let j=0;j<S;j++){
+        const hi = (focus===null || focus===j);
+        dense(prev.vec ? prev.vec[j] : null, band.vec[j],
+              prev.vec ? strip(exs(j),ey(b-1),nodeSp) : [{x:exs(j), y:ey(b-1)+10}],
+              strip(exs(j),y,nodeSp), vis*kf*(hi ? 1 : 0.15));
+      }
+    }
+    for (let j=0;j<S;j++){
+      const dim = (focus===null || focus===j) ? 1 : 0.28;
+      strip(exs(j),y,nodeSp).forEach((q,k) => node(q.x,q.y,nodeR,band.vec[j][k],vis*dim));
+    }
+  }
+}
+
+/* ---------- decoder scene ---------- */
+const dcx = 600, dy = r => 64 + r*33, laneSp = 11, laneR = 4;
+const histX = 250, engX = W - 250, sideGap = Math.min(28, 560/Math.max(S,T)), sideY = i => 78 + i*sideGap;
+
+function drawDec(t,stage,p){
+  const shown = (stage===R-1 && p>0.6) ? DEC.prefix[t+1] : DEC.prefix[t];
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "bold 22px "+FONT; ctx.fillStyle = "#ffd34d";
+  ctx.fillText(shown || " ", dcx, 24);
+  label("Hindi output:", 12, 24, false);
+  label("Hindi so far", histX, 54, false, "center");
+  label("English (encoder memory)", engX, 54, false, "center");
+  for (let j=0;j<=t;j++) chip(histX, sideY(j), DEC.tgt_in[j], {minW:96, stroke: j===t ? "#ffd34d" : "#3a4a75"});
+  for (let i=0;i<S;i++) chip(engX, sideY(i), DATA.src[i], {minW:96});
+  label("Hindi word "+(t+1)+" of "+T, W-12, 24, false, "right");
+
+  for (let r=0;r<R;r++){
+    const row = rowsTpl[r], vis = r<stage ? 1 : (r===stage ? p : 0), cur = (r===stage), y = dy(r);
+    label(row.name, 12, y, cur);
+    if (row.kind === "chip"){ chip(dcx, y-(1-vis)*10, DEC.tgt_in[t], {alpha:vis, minW:90, fill:"#2a2410", stroke:"#ffd34d", color:"#ffe9a8", font:15}); continue; }
+    if (row.kind === "out"){ drawCandidates(t,y,vis); continue; }
+    const cp = strip(dcx,y,laneSp);
+    if (vis <= 0){ cp.forEach(q => ghost(q.x,q.y,laneR)); continue; }
+    const kf = cur ? 1 : 0.35, v = row.vec[t], prev = rowsTpl[r-1];
+    dense(prev.kind==="chip" ? null : prev.vec[t], v,
+          prev.kind==="chip" ? [{x:dcx, y:dy(r-1)+12}] : strip(dcx,dy(r-1),laneSp), cp, vis*kf);
+    if (row.edge === "self"){
+      const A = row.attn[headSel][t];
+      for (let j=0;j<=t;j++){ const w = A[j]; if (w < 0.03) continue;
+        line(histX+50, sideY(j), dcx-52, y, "130,190,255", vis*kf*Math.min(1,0.1+1.4*w), 0.4+4.5*w); }
+    }
+    if (row.edge === "cross"){
+      const A = row.attn[headSel][t];
+      for (let i=0;i<S;i++){ const w = A[i]; if (w < 0.03) continue;
+        line(engX-50, sideY(i), dcx+52, y, "110,230,160", vis*kf*Math.min(1,0.1+1.4*w), 0.4+4.5*w); }
+    }
+    cp.forEach((q,k) => node(q.x,q.y,laneR,v[k],vis));
+  }
+}
+function drawCandidates(t,y,vis){
+  if (vis <= 0) return;
+  const top = DEC.top[t];
+  for (let i=0;i<top.length;i++){
+    const x = 600 + (i-2)*135, pr = top[i].p, win = (i===0 && vis>0.55);
+    line(600, dy(R-2)+6, x, y-14, "255,205,70", vis*(0.08+0.8*pr), 0.6+4*pr);
+    chip(x, y, top[i].w, {alpha:vis, minW:100, fill:"rgba(255,205,70,"+(0.08+0.55*pr).toFixed(2)+")", stroke: win ? "#ffffff" : "#3a4a75", lw: win ? 2 : 1.2, font:15});
+    ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(x-50, y+17, 100, 4);
+    ctx.fillStyle = "rgba(255,205,70,0.95)"; ctx.fillRect(x-50, y+17, 100*pr*vis, 4);
+  }
+}
+
+/* ---------- timeline ---------- */
+const D = 520, segs = []; let acc = 0;
+for (let b=0;b<E.length;b++){ segs.push({scene:"enc", stage:b, start:acc, dur:D}); acc += D; }
+segs.push({scene:"mid", start:acc, dur:1200}); acc += 1200;
+const DECSTART = acc;
+for (let t=0;t<T;t++){ const d = t===0 ? D : D*0.4; for (let s=0;s<R;s++){ segs.push({scene:"dec", t:t, stage:s, start:acc, dur:d}); acc += d; } }
+segs.push({scene:"end", start:acc, dur:2500}); acc += 2500;
+const total = acc;
+function segIndex(tm){ let i = 0; while (i+1 < segs.length && segs[i+1].start <= tm) i++; return i; }
+
+let time = 0, playing = true, speed = 1, dragging = false, last = performance.now();
+const $ = id => document.getElementById(id);
+
+function render(){
+  ctx.fillStyle = "#0b0f1a"; ctx.fillRect(0,0,W,H);
+  const sg = segs[segIndex(time)];
+  let p = Math.min(1, Math.max(0, (time - sg.start)/sg.dur)); p = p*p*(3-2*p);
+  if (sg.scene === "enc") drawEnc(sg.stage, p);
+  else if (sg.scene === "mid"){
+    drawEnc(E.length, 1);
+    ctx.fillStyle = "rgba(11,15,26,0.55)"; ctx.fillRect(0, 300, W, 90);
+    ctx.fillStyle = "rgba(255,211,77,"+Math.min(1,p*2).toFixed(2)+")"; ctx.font = "bold 22px "+FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Memory is ready. Now the decoder writes Hindi, one word at a time.", W/2, 345);
+  }
+  else if (sg.scene === "dec") drawDec(sg.t, sg.stage, p);
+  else drawDec(T-1, R-1, 1);
+  if (sg.scene === "enc" || sg.scene === "mid") label("Click a word to follow only its path", W-12, H-14, false, "right");
+}
+function setPlayLabel(){ $("play").textContent = playing ? "⏸ Pause" : "▶ Play"; }
+function frame(now){
+  const dt = Math.min(100, now - last); last = now;
+  if (playing){ time += dt*speed; if (time >= total-1){ time = total-1; playing = false; setPlayLabel(); } }
+  render(); if (!dragging) $("seek").value = Math.round(time/total*1000);
+  requestAnimationFrame(frame);
+}
+$("play").onclick = () => { if (time >= total-1) time = 0; playing = !playing; setPlayLabel(); };
+$("prev").onclick = () => { playing = false; setPlayLabel(); time = segs[Math.max(0, segIndex(time)-1)].start + 1; };
+$("next").onclick = () => { playing = false; setPlayLabel(); time = segs[Math.min(segs.length-1, segIndex(time)+1)].start + 1; };
+$("jump").onclick = () => { time = DECSTART + 1; };
+$("speed").oninput = e => { speed = +e.target.value; };
+$("head").onchange = e => { headSel = +e.target.value; };
+$("lbl").onchange = e => { showLabels = e.target.checked; };
+$("seek").onpointerdown = () => { dragging = true; };
+$("seek").onpointerup = () => { dragging = false; };
+$("seek").oninput = e => { time = e.target.value/1000*(total-1); };
+cv.addEventListener("click", e => {
+  const sg = segs[segIndex(time)]; if (sg.scene === "dec" || sg.scene === "end") return;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)*W/r.width;
+  let best = -1, bd = 1e9; for (let j=0;j<S;j++){ const d = Math.abs(exs(j)-x); if (d < bd){ bd = d; best = j; } }
+  if (bd < espace/2) focus = (focus === best ? null : best);
+});
+requestAnimationFrame(frame);
+</script></body></html>
