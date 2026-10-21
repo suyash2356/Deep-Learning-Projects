@@ -1,0 +1,10 @@
+{
+  "vocab_size": 16000,
+  "pad_id": 0,
+  "unk_id": 1,
+  "bos_id": 2,
+  "eos_id": 3,
+  "max_src": 400,
+  "max_tgt": 110,
+  "batch_size": 16
+}
