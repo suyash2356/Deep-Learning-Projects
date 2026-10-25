@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body{margin:0;background:#0e1424;color:#e6ebf7;font:15px "Segoe UI","Nirmala UI",sans-serif}
+#app{max-width:1150px;margin:auto;padding:10px}
+#tabs,#ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.tab{flex:1;min-width:150px;background:#151d33;border:2px solid #2a3558;border-radius:10px;padding:7px 10px;cursor:pointer;color:#8d9bc0;font-size:13px}
+.tab b{display:block;font-size:15px;color:#e6ebf7}.tab.on{border-color:#ffd34d;color:#e6ebf7}
+button,select{background:#1b2338;color:#e6ebf7;border:1px solid #33405f;border-radius:6px;padding:5px 11px;cursor:pointer;font-size:14px}
+.rb.on{border-color:#ffd34d}
+#cap{font-size:19px;line-height:1.4;margin:6px 2px 10px;min-height:54px}
+.card{background:#151d33;border:1px solid #2a3558;border-radius:10px;padding:10px;margin-bottom:10px}
+.art{max-height:340px;overflow:auto;position:relative;line-height:1.9;font-size:16px}
+.w{padding:1px 2px;border-radius:4px;transition:background .3s,opacity .3s}.w.un{opacity:.3}.w.f{outline:2px solid #58b4ff}
+.cut{color:#ff9a9a;border-top:2px dashed #ff9a9a;margin:6px 0;font-size:13px}
+.mut{color:#8d9bc0;font-size:13px;margin-top:6px}
+.pc{background:#2a3558;border-radius:4px;padding:1px 6px;margin:0 1px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:800px){.g2{grid-template-columns:1fr}}
+.t{white-space:pre-wrap;border-radius:3px;padding:1px 0}.t.copied{background:rgba(76,208,138,.22)}.t.new{background:rgba(255,178,77,.28)}
+.t.check{background:rgba(255,107,107,.35);border-bottom:2px dotted #ff6b6b}
+.sumbox{font-size:18px;line-height:1.6;min-height:70px}.cur{animation:b 1s infinite}@keyframes b{50%{opacity:0}}
+.cr{display:flex;gap:8px;align-items:center;margin:3px 0}.cw{width:120px;overflow:hidden}.cr span:last-child{width:40px;text-align:right}
+.bar{flex:1;background:#222c48;height:14px;border-radius:7px;overflow:hidden}.bar i{display:block;height:100%;background:#58b4ff}
+.win .bar i{background:#ffd34d}.win .cw{color:#ffd34d;font-weight:600}
+</style></head><body><div id="app">
+<div id="tabs"></div>
+<div id="ctl"><button id="play"></button>
+ <span id="ws" style="display:none"><button onclick="stepw(-1)">◀ word</button> <button onclick="stepw(1)">word ▶</button></span>
+ <label class="mut">Speed <input id="sp" type="range" min="0.4" max="3" step="0.1" value="1"></label></div>
+<div id="cap"></div><div id="stage"></div></div>
+<script>
+const D=__DATA__,$=i=>document.getElementById(i),nR=D.n_read,W=D.words;
+let run=0,paused=false,playing=false,speed=1,chap=0,rnd=3,foc=null,look="all",cur=-1,els=[];
+const TABS=[["1 The article","the text goes in"],["2 The reader","encoder: finds links between words"],["3 The notes","memory handed to the writer"],["4 The writer","decoder: writes word by word"]];
+const CAPS=["A news article comes in. The model can only read the first part, about 300 words.",
+"The reader studies the text in 4 rounds. In each round every word looks at the other words to understand its meaning. Yellow = words that many other words look at.",
+"The reader hands its notes to the writer. Each word is now a set of numbers describing its meaning in this article.",
+"The writer now writes the summary one word at a time. Each time it looks back at the notes, guesses the next word, and picks the likeliest."];
+const ST={copied:"This word appears in the article.",new:"This word is not in the article. The writer chose it from what it learned in training.",check:"A name or number that is NOT in the article. Be suspicious of it!",none:"",end:"The writer decides the summary is complete."};
+const STOP=new Set("the and for with that this from were was are has have had its not but who which their they also said will".split(" "));
+const cap=t=>$("cap").textContent=t,esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function sleep(ms){const id=run;return new Promise((ok,no)=>{let t=0;(function f(){if(id!==run)return no("x");if(!paused)t+=30*speed;t>=ms?ok():setTimeout(f,30)})()})}
+function art(box){box.innerHTML="";els=[];W.forEach((w,i)=>{if(!w)return;const s=document.createElement("span");s.className="w"+(i>=nR?" un":"");s.textContent=w;els[i]=s;box.append(s," ");
+ if(i==nR-1&&W.length>nR){const c=document.createElement("div");c.className="cut";c.textContent="✂ The model stops reading here";box.append(c)}})}
+/* chapter 1 */
+async function c0(){cap(CAPS[0]);$("stage").innerHTML='<div class="card"><div id="a" class="art"></div></div><div class="card" id="i0"></div>';art($("a"));
+ els.forEach(e=>e.style.opacity=0);const g=Math.max(1,Math.round(1500/nR));
+ for(let i=0;i<nR;i+=3){for(let j=i;j<i+3&&j<nR;j++)if(els[j])els[j].style.opacity=1;await sleep(g*3)}
+ els.forEach(e=>e.style.opacity="");
+ $("i0").innerHTML=`Article: <b>${D.n_words}</b> words. The model reads the first <b>${nR}</b> words (${D.n_tok} word-pieces) and ignores the rest.`+
+  (D.examples.length?"<br>It cuts rare words into pieces: "+D.examples.map(e=>`<b>${esc(e.word)}</b> → `+e.pieces.map(p=>`<span class="pc">${esc(p)}</span>`).join("")).join(" &nbsp; "):"");
+ await sleep(3500)}
+/* chapter 2 */
+function heat(){const L=D.layers[rnd],lm={};let mx=1e-9;if(foc!==null)for(const[j,w]of L.links[foc]){lm[j]=w;mx=Math.max(mx,w)}
+ els.forEach((e,i)=>{if(i>=nR)return;const a=Math.pow(L.imp[i],.8);e.classList.toggle("f",i===foc);
+  e.style.background=foc===null?(a>.05?`rgba(255,211,77,${.12+.7*a})`:""):i===foc?"rgba(88,180,255,.5)":lm[i]!==undefined?`rgba(255,140,50,${.25+.65*lm[i]/mx})`:`rgba(255,211,77,${.03+.1*a})`});
+ document.querySelectorAll(".rb").forEach((b,i)=>b.classList.toggle("on",i===rnd));
+ $("lk").innerHTML=foc===null?"Click any word to see which words it looks at.":`<b>${esc(W[foc])}</b> looks most at: `+L.links[foc].map(([j,w])=>`<span class="pc" style="background:rgba(255,140,50,${.25+.65*w/mx})">${esc(W[j])}</span>`).join(" ")}
+function demo(){let b=0,bi=0;for(let i=0;i<nR;i++){const s=D.layers[3].imp[i];if(W[i]&&W[i].length>3&&!STOP.has(W[i].toLowerCase())&&s>b){b=s;bi=i}}return bi}
+function pick(i){stop();rnd=i;heat()}
+async function c1(){cap(CAPS[1]);$("stage").innerHTML='<div id="rb"></div><div class="card"><div id="a" class="art"></div></div><div class="card" id="lk"></div>';
+ $("rb").innerHTML=[0,1,2,3].map(i=>`<button class="rb" onclick="pick(${i})">Round ${i+1}</button>`).join(" ");
+ art($("a"));els.forEach((e,i)=>{if(i<nR)e.onclick=()=>{stop();foc=foc===i?null:i;heat()}});
+ for(let r=0;r<4;r++){rnd=r;foc=null;heat();await sleep(2400)}
+ rnd=3;foc=demo();heat();await sleep(4500)}
+/* chapter 3 */
+async function c2(){cap(CAPS[2]);$("stage").innerHTML='<div class="card"><canvas id="m" height="140" style="width:100%"></canvas><div id="mt" class="mut">Move the mouse over the notes to see which word a column belongs to.</div></div><div class="card">The writer can look back at these notes while writing, but it can no longer see the original article. Each word is shown as 8 colored cells here (the model really uses 256 numbers per word). Yellow and blue are the two directions of a number, brighter means stronger.</div>';
+ const c=$("m");c.width=c.clientWidth;const x=c.getContext("2d"),cw=c.width/nR;
+ const draw=(upto,h)=>{x.clearRect(0,0,c.width,140);for(let i=0;i<upto;i++)for(let r=0;r<8;r++){const v=D.memory[i][r];x.fillStyle=(v>=0?"rgba(255,211,77,":"rgba(88,180,255,")+(.1+.9*Math.pow(Math.abs(v),.7))+")";x.fillRect(i*cw,r*17,Math.max(cw-.5,1),15)}
+  if(h>=0){x.strokeStyle="#fff";x.strokeRect(h*cw-1,0,cw+2,136)}};
+ c.onmousemove=e=>{const h=Math.min(nR-1,Math.floor(e.offsetX/cw));draw(nR,h);$("mt").innerHTML="Column for the word: <b>"+esc(W[h]||"")+"</b>"};
+ const st=Math.ceil(nR/50);for(let i=0;i<=nR;i+=st){draw(i,-1);await sleep(50)}draw(nR,-1);await sleep(3500)}
+/* chapter 4 */
+function glow(k){const h=new Float32Array(nR),ls=look==="all"?[0,1,2,3]:[+look];let m=1e-9,bi=0;
+ for(const l of ls)for(const[j,w]of D.steps[k].looks[l])h[j]+=w;h.forEach(v=>m=Math.max(m,v));
+ els.forEach((e,i)=>{if(i>=nR)return;e.style.background=h[i]/m>.05?`rgba(88,180,255,${.12+.75*h[i]/m})`:"";if(h[i]>h[bi])bi=i});
+ const b=$("a"),e=els[bi];if(e)b.scrollTo({top:e.offsetTop-b.clientHeight/2,behavior:"smooth"})}
+function show(k,ph){const S=D.steps,s=S[k];glow(k);
+ $("sum").innerHTML=S.slice(0,ph>1?k+1:k).map(t=>`<span class="t ${t.status}">${esc(t.piece)}</span>`).join("")+'<span class="cur">▍</span>';
+ const p0=s.cands[0].p;
+ $("cd").innerHTML=ph<1?'<div class="mut">The writer is looking back at the notes...</div>':s.cands.map((c,i)=>`<div class="cr${i?"":" win"}"><span class="cw">${esc(c.w)}</span><div class="bar"><i style="width:${c.p*100}%"></i></div><span>${Math.round(c.p*100)}%</span></div>`).join("")+
+  `<div class="mut">${p0>.7?"Very sure. ":p0>.4?"Fairly sure. ":"Unsure, many words could fit. "}${s.over?`It first wanted “${esc(s.over)}”, but a rule blocked it (repeat, or too early to stop). `:""}${ph>1?ST[s.status]:""}</div>`}
+function fin(){const s=D.stats,p=s.n?Math.round(100*s.copied/s.n):0;$("fin").style.display="block";
+ $("fin").innerHTML=`<b>Summary complete.</b> ${s.copied} of ${s.n} words (${p}%) appear in the article. `+(s.check.length?`<span style="color:#ff8a8a">These names or numbers are NOT in the text the model read, so check them: <b>${s.check.map(esc).join(", ")}</b></span>`:"No suspicious names or numbers found.")+
+  '<div class="mut"><span class="t copied">from the article</span> <span class="t new">new word</span> <span class="t check">name or number not in the article</span></div>'}
+async function c3(){cap(CAPS[3]);$("stage").innerHTML=`<div class="g2"><div class="card"><div class="mut" style="margin:0 0 6px">Where the writer is looking in the article &nbsp;<select onchange="look=this.value;if(cur>=0)glow(cur)"><option value="all">all rounds</option><option value="0">round 1</option><option value="1">round 2</option><option value="2">round 3</option><option value="3">round 4</option></select></div><div id="a" class="art" style="max-height:380px"></div></div>
+ <div><div class="card"><div class="mut" style="margin:0 0 6px">Summary so far</div><div id="sum" class="sumbox"></div></div><div class="card"><div class="mut" style="margin:0 0 6px">The writer's guesses for the next word</div><div id="cd"></div></div></div></div><div class="card" id="fin" style="display:none"></div>`;
+ art($("a"));cur=-1;
+ for(let k=0;k<D.steps.length;k++){cur=k;const f=k<3;show(k,0);await sleep(f?1000:260);show(k,1);await sleep(f?1400:320);show(k,2);await sleep(f?700:180)}
+ fin()}
+function stepw(d){if(chap!==3||!$("a"))return;stop();cur=Math.max(0,Math.min(D.steps.length-1,cur+d));show(cur,2);if(cur===D.steps.length-1)fin();else $("fin").style.display="none"}
+/* controls */
+const CH=[c0,c1,c2,c3];
+function btn(){$("play").textContent=playing?(paused?"▶ Resume":"⏸ Pause"):"▶ Play"}
+function stop(){run++;playing=false;paused=false;btn()}
+function tab(c){chap=c;document.querySelectorAll(".tab").forEach((t,i)=>t.classList.toggle("on",i===c));$("ws").style.display=c===3?"inline":"none"}
+async function start(c){const id=++run;playing=true;paused=false;btn();
+ try{for(let i=c;i<4;i++){tab(i);await CH[i]()}}catch(e){if(e!=="x")throw e;return}
+ if(id===run){playing=false;btn()}}
+$("tabs").innerHTML=TABS.map((t,i)=>`<div class="tab" onclick="start(${i})"><b>${t[0]}</b>${t[1]}</div>`).join("");
+$("play").onclick=()=>{if(!playing)start(chap);else{paused=!paused;btn()}};
+$("sp").oninput=e=>speed=+e.target.value;
+start(0);
+</script></body></html>
