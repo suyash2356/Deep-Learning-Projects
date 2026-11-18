@@ -297,7 +297,7 @@ This is a learning project. Please do **not** read it as "NCM beats transformers
 
 ## About
 
-Built by **<Your Name>** as a hands-on way to learn and explain transformers and NCM. Code was written with AI assistance (Claude); the experiments, results and write-up were run and checked by the author.
+Built by **Suyash Babad** as a hands-on way to learn and explain transformers and NCM. Code was written with AI assistance (Claude); the experiments, results and write-up were run and checked by the author.
 
 This project is independent and is not affiliated with the authors of the NCM paper.
 
