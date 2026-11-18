@@ -1,0 +1,10 @@
+{
+  "cell_accuracy": 0.8851944444444444,
+  "valid_solution_pct": 0.601,
+  "exact_match_pct": 0.531,
+  "clues_kept_pct": 0.697,
+  "avg_violations": 1.46,
+  "forward_passes": 36,
+  "ms_per_puzzle": 9.111826181411743,
+  "train_time_sec": 930.2539489269257
+}
