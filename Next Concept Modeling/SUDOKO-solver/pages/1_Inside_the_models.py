@@ -1,3 +1,8 @@
+import os, sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(ROOT)
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 import random
 import numpy as np
 import pandas as pd
